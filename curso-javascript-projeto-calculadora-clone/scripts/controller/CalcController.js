@@ -13,9 +13,12 @@ class CalcController {
         this._currentDate;
         this._locale = "pt-BR";
         this._operator = [];
+        this._lastOperator = "";
+        this._lastNumber = "";
 
         this.initialize();
         this.initButtonsEvents();
+        this.setLastNumberToDisplay();
     }
 
     //Métodos
@@ -41,21 +44,80 @@ class CalcController {
 
         if (this._operator.length > 3) {
             this.calc();
-            console.log("mais de três valores", this._operator);
+            // console.log("mais de três valores", this._operator);
         }
     }
 
     //Calcula
     calc() {
-        //Armazenando o último operador
-        let lastOp = this._operator.pop();
+        let lastOp = "";
+        let result;
 
+        //Armazenando o último operador
+        this._lastOperator = this.getLastItem();
+
+        if (this._operator.length < 3) {
+            //Armazena o primeiro valor
+            let firstNumber = this._operator[0];
+
+            this._operator = [firstNumber, this._lastOperator, this._lastNumber];
+        }
+
+        if (this._operator.length > 3) {
+            //Armazenando o último operador
+            lastOp = this._operator.pop();
+            
+            //Armazenando o último número
+            this._lastNumber = this.getResult();
+        }
+        else if (this._operator.length == 3) {
+            this._lastNumber = this.getLastItem(false);
+        }
+
+        result = this.getResult();   
+
+        if (lastOp == "%") {
+            result /= 100;
+
+            this._operator = [result];
+
+            this.setLastNumberToDisplay();
+        }
+        else {
+            //Armazendo o resultado no array e o operador que foi removido
+            this._operator = [result];
+
+            if (lastOp) {
+                this._operator.push(lastOp);
+            }
+
+            this.setLastNumberToDisplay();
+        }
+    }
+
+    //Calcula e retorna o resultado
+    getResult() {
         //O método eval interpreta o código javascript dentro de uma string
         //O método junta as informações em uma string
-        let result = eval(this._operator.join(""));
+        return eval(this._operator.join(""));
+    }
 
-        //Armazendo o resultado no array e o operador que foi removido
-        this._operator = [result, lastOp];
+    //Adiciona o ponto
+    addDot() {
+        let lastOperation = this.getLastOperator();
+
+        //Evita que mais de um ponto seja colocado
+        if (typeof lastOperation === "string" && lastOperation.split("").indexOf(".")) {
+            //Sai do método
+            return;
+        }
+        //verifica se é um operador ou se não há nada na variável
+        if (this.isOperator(lastOperation) || !lastOperation) {
+            this.pushOperation("0.");
+        }
+        else {
+            this.setLastOperator(lastOperation.toString() + ".");
+        }
 
         this.setLastNumberToDisplay();
     }
@@ -71,9 +133,6 @@ class CalcController {
             if (this.isOperator(value)) {
                 //Troca o operador aritimético
                 this.setLastOperator(value);
-            }
-            else if (isNaN(value)) {
-                console.log(value);
             }
             else {
                 this.pushOperation(value);
@@ -91,7 +150,7 @@ class CalcController {
                 let newValue = this.getLastOperator().toString() + value.toString();
 
                 //Converte e adiciona no valor
-                this.setLastOperator(parseInt(newValue));
+                this.setLastOperator(newValue);
 
                 //Atualizar o display da calculadora
                 this.setLastNumberToDisplay();
@@ -102,17 +161,30 @@ class CalcController {
 
     //Atualiza o display
     setLastNumberToDisplay() {
-        let lastNumber;
+        let lastNumber = this.getLastItem(false);
 
-        //Percorrendo o array para pegar o último número digitado
-        for (let x = this._operator.length - 1; x >= 0; x--) {
-            if (!this.isOperator(this._operator[x])) {
-                lastNumber = this._operator[x];
+        if (!lastNumber) {
+            lastNumber = 0
+        }
+        this.displayCalc = lastNumber;
+    }
+
+    //Esse método pega o último item do array
+    getLastItem(isOperator = true) {
+        let lastItem;
+
+        for (let i = this._operator.length - 1; i >= 0; i--) {
+            if (this.isOperator(this._operator[i]) == isOperator) {
+                //Pega o último operador
+                lastItem = this._operator[i];
                 break;
             }
         }
 
-        this.displayCalc = lastNumber;
+        if (!lastItem) {
+            lastItem = (isOperator) ? this._lastOperator : this._lastNumber;
+        }
+        return lastItem;
     }
 
     //Concatena os valores
@@ -140,11 +212,17 @@ class CalcController {
     clearAll() {
         //'Limpa' o array
         this._operator = [];
+        this._lastNumber = "";
+        this._lastOperator = "";
+
+        this.setLastNumberToDisplay();
     }
 
     clearEntry() {
         //Remove o último valor do array
         this._operator.pop();
+
+        this.setLastNumberToDisplay();
     }
 
     setError() {
@@ -172,14 +250,14 @@ class CalcController {
             case "divisao":
                 this.addOperation("/");
                 break;
-            case "porcentagem":
+            case "porcento":
                 this.addOperation("%");
                 break;
             case "igual":
-
+                this.calc();
                 break;
             case "ponto":
-                this.addOperation(".");
+                this.addDot();
                 break;
             case "0":
             case "1":
