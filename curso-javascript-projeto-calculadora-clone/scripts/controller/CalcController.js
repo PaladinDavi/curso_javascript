@@ -15,9 +15,12 @@ class CalcController {
         this._operator = [];
         this._lastOperator = "";
         this._lastNumber = "";
+        this._audioOnOff = false;
+        this._audio = new Audio("click.mp3");
 
         this.initialize();
         this.initButtonsEvents();
+        this.initKeyboard();
         this.setLastNumberToDisplay();
     }
 
@@ -28,6 +31,113 @@ class CalcController {
         setInterval(() => {
             this.setDateTime();
         }, 1000);
+
+        this.pasteToClipboard();
+
+        document.querySelectorAll(".btn-ac").forEach(btn => {
+            btn.addEventListener("dblclick", e => {
+                this.toogleAudio();
+            });
+        });
+    }
+
+    //Ativa e desativa o som da calculadora
+    toogleAudio() {
+        this._audioOnOff = !this._audioOnOff;
+    }
+
+    playAudio() {
+        if (this._audioOnOff) {
+            //Zero o tempo do áudio
+            this._audio.currentTime = 0;
+            this._audio.play();
+        }
+    }
+
+    //Esse método está sendo utilizado por que estamos trabalhando com o SVG e precisamos copiar o valor
+    //Esse método permitirá que o valor que está no display seja copiado
+    copyToClipboard() {
+        //O método createElement cria um elemento HTML
+        let input = document.createElement("input");
+        //Armazena o valor do display nesse elemento
+        input.value = this.displayCalc;
+        //Adiciona o elemento input na tag body e faz dele um filho
+        document.body.appendChild(input);
+        //O método select seleciona o valor contido no input
+        input.select();
+        //Esse comando vai copiar para a área de transferência
+        document.execCommand("Copy");
+        //Remove o input
+        input.remove();
+    }
+
+    pasteToClipboard() {
+        document.addEventListener("paste", e => {
+            let text = e.clipboardData.getData("Text");
+
+            if (!isNaN(text)) {
+                this.displayCalc = text;
+            }
+            else {
+                alert("Cole apenas números");
+                this.clearEntry();
+            }
+        });
+    }
+
+    //Adicionando eventos de teclado
+    initKeyboard() {
+        document.addEventListener("keyup", e => {
+            //a propriedade key do evento keyup mostra a tecla que foi pressionada
+            this.playAudio();
+            switch (e.key) {
+                case "Escape":
+                    this.clearAll();
+                    break;
+                case "Backspace":
+                    this.clearEntry();
+                    break;
+                case "+":
+                    this.addOperation(e.key);
+                    break;
+                case "-":
+                    this.addOperation(e.key);
+                    break;
+                case "*":
+                    this.addOperation(e.key);
+                    break;
+                case "/":
+                    this.addOperation(e.key);
+                    break;
+                case "%":
+                    this.addOperation(e.key);
+                case "Enter":
+                case "=":
+                    this.calc();
+                    break;
+                case ".":
+                case ",": 
+                    this.addDot();
+                    break;
+                case "1":
+                case "2":
+                case "3":
+                case "4":
+                case "5":
+                case "6":
+                case "7":
+                case "8":
+                case "9":
+                case "0":
+                    this.addOperation(parseInt(e.key));
+                    break;
+                case "c":
+                    if (e.ctrlKey) {
+                        this.copyToClipboard();
+                    }
+                    break;
+            }
+        });
     }
 
     //Método que vai adicionar mais de um evento nos botões
@@ -99,7 +209,15 @@ class CalcController {
     getResult() {
         //O método eval interpreta o código javascript dentro de uma string
         //O método junta as informações em uma string
-        return eval(this._operator.join(""));
+        try {
+            return eval(this._operator.join(""));
+        }
+        catch (error) {
+            setTimeout(() => {
+                this.setError();
+            }, 0);
+        }
+        
     }
 
     //Adiciona o ponto
@@ -231,6 +349,7 @@ class CalcController {
 
     //Executa a ação do botão
     execBtn(value) {
+        this.playAudio();
         switch (value) {
             case "ac":
                 this.clearAll();
@@ -331,7 +450,12 @@ class CalcController {
     }
 
     set displayCalc(value) {
-        this._displayCalcEl.innerHTML = value;
+        if (value.toString().length > 10) {
+            this.setError();
+        }
+        else {
+            this._displayCalcEl.innerHTML = value;
+        }
     }
 
     get currentDate() {
